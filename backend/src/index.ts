@@ -3,6 +3,7 @@ import express from "express";
 import { MikroORM } from "@mikro-orm/core";
 import { ApolloServer } from "apollo-server-express";
 import { buildSchema } from "type-graphql";
+import cors from "cors";
 
 import { __prod__ } from "./constants";
 
@@ -13,7 +14,6 @@ import { UserResolver } from "./resolvers/user";
 import redis from "redis";
 import session from "express-session";
 import ConnectRedis from "connect-redis";
-import { MyContext } from "./types";
 
 const main = async () => {
   const orm = await MikroORM.init(microConfig);
@@ -26,6 +26,13 @@ const main = async () => {
   const redisClient = redis.createClient({
     port: Number(process.env.REDIS_PORT),
   });
+
+  app.use(
+    cors({
+      origin: "http://localhost:3000",
+      credentials: true,
+    })
+  );
 
   app.use(
     session({
@@ -54,7 +61,10 @@ const main = async () => {
     context: ({ req, res }) => ({ em: orm.em, req, res }),
   });
 
-  apolloServer.applyMiddleware({ app });
+  apolloServer.applyMiddleware({
+    app,
+    cors: false,
+  });
 
   app.get("/", (_, res) => res.send("Cocô"));
 
