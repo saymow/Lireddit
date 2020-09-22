@@ -20,6 +20,10 @@ export class User {
   @Property({ type: "text", unique: true }) // ORM
   username!: string;
 
+  @Field() // GraphQL
+  @Property({ type: "text", unique: true }) // ORM
+  email!: string;
+
   @Property({ type: "text" }) // ORM
   password!: string;
 }
