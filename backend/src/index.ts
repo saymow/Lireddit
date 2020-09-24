@@ -11,7 +11,7 @@ import microConfig from "./mikro-orm.config";
 import { HelloResolver } from "./resolvers/hello";
 import { PostResoler } from "./resolvers/post";
 import { UserResolver } from "./resolvers/user";
-import redis from "redis";
+import Redis from "ioredis";
 import session from "express-session";
 import ConnectRedis from "connect-redis";
 
@@ -23,7 +23,7 @@ const main = async () => {
   const PORT = process.env.PORT || "3333";
 
   const RedisStore = ConnectRedis(session);
-  const redisClient = redis.createClient({
+  const redis = new Redis({
     port: Number(process.env.REDIS_PORT),
   });
 
@@ -38,7 +38,7 @@ const main = async () => {
     session({
       name: COOKIE_NAME,
       store: new RedisStore({
-        client: redisClient,
+        client: redis,
         disableTouch: true,
       }),
       cookie: {
@@ -58,7 +58,7 @@ const main = async () => {
       resolvers: [HelloResolver, PostResoler, UserResolver],
       validate: false,
     }),
-    context: ({ req, res }) => ({ em: orm.em, req, res }),
+    context: ({ req, res }) => ({ em: orm.em, req, res, redis }),
   });
 
   apolloServer.applyMiddleware({
