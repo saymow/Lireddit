@@ -1,23 +1,30 @@
 import "reflect-metadata";
-import express from "express";
-import { MikroORM } from "@mikro-orm/core";
 import { ApolloServer } from "apollo-server-express";
-import { buildSchema } from "type-graphql";
+import ConnectRedis from "connect-redis";
 import cors from "cors";
-
+import express from "express";
+import session from "express-session";
+import Redis from "ioredis";
+import { buildSchema } from "type-graphql";
+import { createConnection } from "typeorm";
 import { COOKIE_NAME, __prod__ } from "./constants";
-
-import microConfig from "./mikro-orm.config";
+import { Post } from "./entities/Post";
+import { User } from "./entities/User";
 import { HelloResolver } from "./resolvers/hello";
 import { PostResoler } from "./resolvers/post";
 import { UserResolver } from "./resolvers/user";
-import Redis from "ioredis";
-import session from "express-session";
-import ConnectRedis from "connect-redis";
 
 const main = async () => {
-  const orm = await MikroORM.init(microConfig);
-  await orm.getMigrator().up();
+  const con = await createConnection({
+    type: "postgres",
+    database: process.env.PG_NAME,
+    username: process.env.PG_NAME,
+    password: process.env.PG_PASS, 
+    port: parseInt(process.env.PG_PORT as string),
+    logging: true, 
+    synchronize: true,
+    entities: [Post, User],
+  }).catch((err) => console.log(err));
 
   const app = express();
   const PORT = process.env.PORT || "3333";
@@ -58,7 +65,7 @@ const main = async () => {
       resolvers: [HelloResolver, PostResoler, UserResolver],
       validate: false,
     }),
-    context: ({ req, res }) => ({ em: orm.em, req, res, redis }),
+    context: ({ req, res }) => ({ req, res, redis }),
   });
 
   apolloServer.applyMiddleware({
