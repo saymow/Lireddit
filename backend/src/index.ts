@@ -19,9 +19,9 @@ const main = async () => {
     type: "postgres",
     database: process.env.PG_NAME,
     username: process.env.PG_NAME,
-    password: process.env.PG_PASS, 
+    password: process.env.PG_PASS,
     port: parseInt(process.env.PG_PORT as string),
-    logging: true, 
+    logging: true,
     synchronize: true,
     entities: [Post, User],
   }).catch((err) => console.log(err));
