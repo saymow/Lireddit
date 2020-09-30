@@ -1,4 +1,5 @@
 import "reflect-metadata";
+import path from "path";
 import { ApolloServer } from "apollo-server-express";
 import ConnectRedis from "connect-redis";
 import cors from "cors";
@@ -23,8 +24,11 @@ const main = async () => {
     port: parseInt(process.env.PG_PORT as string),
     logging: true,
     synchronize: true,
+    migrations: [path.resolve(__dirname, "migrations", "*")],
     entities: [Post, User],
-  }).catch((err) => console.log(err));
+  });
+
+  await con.runMigrations();
 
   const app = express();
   const PORT = process.env.PORT || "3333";
