@@ -9,7 +9,10 @@ import {
   Field,
   Ctx,
   UseMiddleware,
-  Int,, FieldResolver, Root
+  Int,
+  FieldResolver,
+  Root,
+  ObjectType,, Info
 } from "type-graphql";
 import { Post } from "../entities/Post";
 import { getConnection } from "typeorm";
@@ -23,33 +26,68 @@ class PostInput {
   text: string;
 }
 
+@ObjectType()
+class PaginatedPost {
+  @Field(() => [Post])
+  posts: Post[];
+
+  @Field()
+  hasMore: boolean;
+}
+
 @Resolver(Post)
-export class PostResoler {
+export class PostResolver {
   @FieldResolver(() => String)
-  textSnippet(
-    @Root() root: Post
-  ) {
-    return root.text.slice(0, 50).concat('...');
+  textSnippet(@Root() root: Post) {
+    return root.text.slice(0, 50).concat("...");
   }
 
-  @Query(() => [Post])
-  posts(
+  @Query(() => PaginatedPost)
+  async posts(
     @Arg("limit", () => Int!) limit: number,
-    @Arg("cursor", () => String, { nullable: true }) cursor: string | null
-  ): Promise<Post[]> {
+    @Arg("cursor", () => String, { nullable: true }) cursor: string | null,
+  ): Promise<PaginatedPost> {
     const realLimit = Math.min(50, limit);
+    const realLimitPlusOne = realLimit + 1;
 
-    const qb = getConnection()
-      .getRepository(Post)
-      .createQueryBuilder("post")
-      .orderBy('"createdAt"', "DESC")
-      .take(realLimit);
+    const posts = await getConnection().query(
+      `
+      SELECT p.*, 
+      json_build_object(
+        'id', u.id,
+        'username', u.username,
+        'email', u.email
+      ) creator 
+      FROM post P 
+      INNER JOIN public.user u ON u.id = p."creatorId"
+      ${cursor && `WHERE p."createdAt" < $2`}
+      ORDER BY p."createdAt" DESC
+      LIMIT $1
+    `,
+      [limit, new Date(parseInt(cursor as string))]
+    );
 
-    if (cursor) {
-      qb.where('"createdAt" < :cursor', { cursor: new Date(parseInt(cursor)) });
-    }
+    // const qb = getConnection()
+    //   .getRepository(Post)
+    //   .createQueryBuilder("post")
+    //   .innerJoinAndSelect("post.creator", "user", 'user.id = post."creatorId"')
+    //   .orderBy('post."createdAt"', "DESC")
+    //   .take(realLimitPlusOne);
 
-    return qb.getMany();
+    // if (cursor) {
+    //   qb.where('post."createdAt" < :cursor', {
+    //     cursor: new Date(parseInt(cursor)),
+    //   });
+    // }
+
+    // const posts = await qb.getMany();
+
+    console.log(posts);
+
+    return {
+      posts: posts.slice(0, realLimit),
+      hasMore: posts.length === realLimitPlusOne,
+    };
   }
 
   @Query(() => Post, { nullable: true })
