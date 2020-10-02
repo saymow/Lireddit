@@ -12,7 +12,8 @@ import {
   Int,
   FieldResolver,
   Root,
-  ObjectType,, Info
+  ObjectType,
+  Info,
 } from "type-graphql";
 import { Post } from "../entities/Post";
 import { getConnection } from "typeorm";
@@ -45,10 +46,14 @@ export class PostResolver {
   @Query(() => PaginatedPost)
   async posts(
     @Arg("limit", () => Int!) limit: number,
-    @Arg("cursor", () => String, { nullable: true }) cursor: string | null,
+    @Arg("cursor", () => String, { nullable: true }) cursor: string | null
   ): Promise<PaginatedPost> {
     const realLimit = Math.min(50, limit);
     const realLimitPlusOne = realLimit + 1;
+
+    const parameters = [realLimitPlusOne] as any[];
+
+    if (cursor) parameters.push(new Date(parseInt(cursor as string)));
 
     const posts = await getConnection().query(
       `
@@ -60,11 +65,11 @@ export class PostResolver {
       ) creator 
       FROM post P 
       INNER JOIN public.user u ON u.id = p."creatorId"
-      ${cursor && `WHERE p."createdAt" < $2`}
+      ${cursor ? `WHERE p."createdAt" < $2` : ""}
       ORDER BY p."createdAt" DESC
       LIMIT $1
     `,
-      [limit, new Date(parseInt(cursor as string))]
+      parameters
     );
 
     // const qb = getConnection()
@@ -81,8 +86,6 @@ export class PostResolver {
     // }
 
     // const posts = await qb.getMany();
-
-    console.log(posts);
 
     return {
       posts: posts.slice(0, realLimit),

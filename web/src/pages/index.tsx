@@ -16,6 +16,8 @@ const Index = () => {
     variables,
   });
 
+  console.log(data);
+
   return (
     <Layout>
       <Flex marginBottom={4}>
