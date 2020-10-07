@@ -55,18 +55,50 @@ export class PostResolver {
     const isUpdoot = value !== -1;
     const realValue = isUpdoot ? 1 : -1;
 
-    await getConnection().query(
-      `
-      START TRANSACTION;
-        INSERT INTO updoot ("userId", "postId", value)
-        VALUES(${userId}, ${postId}, ${realValue}); 
-      
-        UPDATE post 
-        SET points = points + ${realValue}
-        WHERE id = ${postId}; 
-      COMMIT;
-    `
-    );
+    const updoot = await Updoot.findOne({
+      where: {
+        postId,
+        userId,
+      },
+    });
+
+    if (updoot && updoot.value !== realValue) {
+      await getConnection().transaction(async (em) => {
+        await em.query(
+          `
+          UPDATE updoot SET value = $1 WHERE "postId" = $2 AND "userId" = $3; 
+        `,
+          [realValue, postId, userId]
+        );
+
+        await em.query(
+          `
+          UPDATE post 
+          SET points = points + $1
+          WHERE id = $2;
+        `,
+          [2 * realValue, postId]
+      });
+    } else if (!updoot) {
+      getConnection().transaction(async (em) => {
+        await em.query(
+          `
+          INSERT INTO updoot ("userId", "postId", value)
+          VALUES($1, $2, $3); 
+        `,
+          [userId, postId, realValue]
+        );
+
+        await em.query(
+          `
+          UPDATE post 
+          SET points = points + $1
+          WHERE id = $2;
+        `,
+          [realValue, postId]
+        );
+      });
+    }
 
     return true;
   }
