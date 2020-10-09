@@ -205,8 +205,14 @@ export class PostResolver {
 
   @Mutation(() => Boolean)
   @UseMiddleware(isAuth)
-  async deletePost(@Arg("id") id: number): Promise<Boolean> {
-    await Post.delete(id);
+  async deletePost(
+    @Arg("id", () => Int!) id: number,
+    @Ctx() { req }: MyContext
+  ): Promise<Boolean> {
+    const { userId } = req.session;
+
+    await Post.delete({ id, creatorId: userId });
+
     return true;
   }
 }
