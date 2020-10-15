@@ -12,9 +12,9 @@ const PostOptionsButtons: React.FC<PostOptionsButtonsProps> = ({
   id,
   creatorId,
 }) => {
-  const [, deletePost] = useDeletePostMutation();
+  const [deletePost] = useDeletePostMutation();
 
-  const [{ data: meData }] = useMeQuery();
+  const { data: meData } = useMeQuery();
 
   return creatorId !== meData?.me?.id ? null : (
     <Box>
@@ -27,7 +27,10 @@ const PostOptionsButtons: React.FC<PostOptionsButtonsProps> = ({
         aria-label="Delete post"
         onClick={() =>
           deletePost({
-            id,
+            variables: { id },
+            update: (cache) => {
+              cache.evict({ id: "Post:" + id });
+            },
           })
         }
       />

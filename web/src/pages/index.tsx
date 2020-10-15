@@ -1,24 +1,22 @@
 import { Box, Button, Flex, Heading, Link, Stack, Text } from "@chakra-ui/core";
-import { withUrqlClient } from "next-urql";
 import NextLink from "next/link";
-import React, { useState } from "react";
+import React from "react";
 import Layout from "../components/Layout";
 import PostOptionsButtons from "../components/PostOptionButtons";
 import UpdootSection from "../components/UpdootSection";
-import { useMeQuery, usePostsQuery } from "../generated/graphql";
-import { createUrqlClient } from "../utils/createUrqlClient";
+import { usePostsQuery } from "../generated/graphql";
+import { withApollo } from "../utils/withApollo";
 
 const Index = () => {
-  const [variables, setVariables] = useState({
-    limit: 15,
-    cursor: null as string | null,
+  const { data, loading, error, fetchMore, variables } = usePostsQuery({
+    variables: {
+      limit: 15,
+      cursor: null as string | null,
+    },
+    notifyOnNetworkStatusChange: true,
   });
 
-  const [{ data: meData }] = useMeQuery();
-
-  const [{ data, fetching }] = usePostsQuery({
-    variables,
-  });
+  console.log(error);
 
   return (
     <Layout>
@@ -55,15 +53,36 @@ const Index = () => {
           <Flex>
             {data.posts.hasMore && (
               <Button
-                isLoading={fetching}
+                isLoading={loading}
                 m="auto"
                 my={8}
                 onClick={() => {
-                  setVariables((prev) => ({
-                    ...prev,
-                    cursor:
-                      data.posts.posts[data.posts.posts.length - 1].createdAt,
-                  }));
+                  fetchMore({
+                    variables: {
+                      limit: variables!.limit,
+                      cursor:
+                        data.posts.posts[data.posts.posts.length - 1].createdAt,
+                    },
+                    // updateQuery(
+                    //   previousValue,
+                    //   { fetchMoreResult }
+                    // ): PostsQuery {
+                    //   if (!fetchMoreResult) return previousValue as PostsQuery;
+
+                    //   return {
+                    //     __typename: "Query",
+                    //     posts: {
+                    //       __typename: "PaginatedPost",
+                    //       hasMore: (fetchMoreResult as PostsQuery).posts
+                    //         .hasMore,
+                    //       posts: [
+                    //         ...previousValue.posts.posts,
+                    //         ...fetchMoreResult.posts.posts,
+                    //       ],
+                    //     },
+                    //   };
+                    // },
+                  });
                 }}
               >
                 Load more
@@ -76,4 +95,4 @@ const Index = () => {
   );
 };
 
-export default withUrqlClient(createUrqlClient, { ssr: true })(Index);
+export default withApollo({ ssr: true })(Index);
